@@ -15,16 +15,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Unzip all 4 parts
+      - name: Unzip project and Android wrapper
         run: |
-          ls -la
           for z in Zoya_part*_of_4.zip; do
-            echo "Unzipping $z"
             unzip -oq "$z"
           done
-          test -d android/app
-          sed -i '/kotlin-kapt/d;/kapt(/d' android/app/build.gradle.kts
-          sed -i 's/8\.5\.2/8.7.2/g' android/build.gradle.kts
+          rm -rf android
+          unzip -oq ZoyaApkWrapper.zip
+          test -f package.json
+          test -f android/app/build.gradle
 
       - uses: actions/setup-node@v4
         with:
@@ -37,9 +36,8 @@ jobs:
 
       - name: Copy web build into Android assets
         run: |
-          mkdir -p android/app/src/main/assets/www
-          cp -r dist/* android/app/src/main/assets/www/
-          mkdir -p android/app/src/main/res/drawable && printf '%s' '<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24"><path android:fillColor="#FFFFFF" android:pathData="M12,14c1.66,0 3,-1.34 3,-3V5c0,-1.66 -1.34,-3 -3,-3S9,3.34 9,5v6c0,1.66 1.34,3 3,3zM17.3,11c0,3 -2.54,5.1 -5.3,5.1S6.7,14 6.7,11H5c0,3.41 2.72,6.23 6,6.72V21h2v-3.28c3.28,-0.48 6,-3.3 6,-6.72h-1.7z"/></vector>' > android/app/src/main/res/drawable/ic_mic.xml && printf '%s' '<resources><string name="state_verify_fingerprint">Verifying</string><string name="state_failed_fingerprint">Failed</string></resources>' > android/app/src/main/res/values/extra_strings.xml
+          mkdir -p android/app/src/main/assets
+          cp -r dist/* android/app/src/main/assets/
 
       - uses: actions/setup-java@v4
         with:
@@ -52,9 +50,7 @@ jobs:
 
       - name: Build APK
         working-directory: android
-        env:
-          FIREBASE_ENABLED: "false"
-        run: gradle assembleStandardDebug --stacktrace
+        run: gradle assembleDebug --stacktrace
 
       - name: Collect APK
         run: |
@@ -70,7 +66,7 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.${{ github.run_number }}
+          tag_name: v2.0.${{ github.run_number }}
           name: Zoya AI APK (Build ${{ github.run_number }})
           files: zoya-ai-debug.apk
         env:
