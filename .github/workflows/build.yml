@@ -1,0 +1,76 @@
+name: Build Zoya APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unzip all 4 parts
+        run: |
+          ls -la
+          for z in Zoya_part*_of_4.zip; do
+            echo "Unzipping $z"
+            unzip -oq "$z"
+          done
+          test -d android/app
+          test -f package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build web app
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Copy web build into Android assets
+        run: |
+          mkdir -p android/app/src/main/assets/www
+          cp -r dist/* android/app/src/main/assets/www/
+          echo '<lint/>' > android/app/lint.xml
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Build APK
+        working-directory: android
+        env:
+          FIREBASE_ENABLED: "false"
+        run: gradle assembleStandardDebug --stacktrace
+
+      - name: Collect APK
+        run: |
+          APK=$(find android/app/build/outputs/apk -name "*.apk" | head -n 1)
+          test -n "$APK"
+          cp "$APK" zoya-ai-debug.apk
+          ls -lh zoya-ai-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zoya-ai-debug-apk
+          path: zoya-ai-debug.apk
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Zoya AI APK (Build ${{ github.run_number }})
+          files: zoya-ai-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
