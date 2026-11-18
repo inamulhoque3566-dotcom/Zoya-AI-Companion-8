@@ -23,7 +23,7 @@ jobs:
             unzip -oq "$z"
           done
           test -d android/app
-          test -f package.json
+          sed -i 's/8\.5\.2/8.7.2/g' android/build.gradle.kts
 
       - uses: actions/setup-node@v4
         with:
