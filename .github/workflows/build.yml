@@ -38,7 +38,11 @@ jobs:
         run: |
           mkdir -p android/app/src/main/assets
           cp -r dist/* android/app/src/main/assets/
-
+      - name: Point app to Render server
+        run: |
+          grep -rn "loadUrl" android/app/src || true
+          grep -rl "loadUrl(" android/app/src | xargs -r sed -i -E 's#loadUrl\("[^"]*"\)#loadUrl("https://zoya-ai-companion-8.onrender.com/")#g'
+          grep -rn "loadUrl" android/app/src || true
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
